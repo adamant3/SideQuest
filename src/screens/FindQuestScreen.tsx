@@ -132,10 +132,10 @@ export default function FindQuestScreen() {
   }, [quests, selectedRarity, selectedXpFilter]);
 
   const renderQuest = ({ item }: { item: Quest }) => {
-    const rarityKey = item.rarity in rarityColors ? (item.rarity as Rarity) : 'common';
-    const rarityStyle = rarityColors[rarityKey];
+    const hasKnownRarity = item.rarity in rarityColors;
+    const rarityStyle = hasKnownRarity ? rarityColors[item.rarity as Rarity] : rarityColors.common;
 
-    if (!(item.rarity in rarityColors)) {
+    if (!hasKnownRarity) {
       console.warn('Unknown quest rarity:', item.rarity);
     }
 
@@ -170,11 +170,11 @@ export default function FindQuestScreen() {
             <Text numberOfLines={2} style={styles.descriptionText}>
               {item.description}
             </Text>
-            {(item.location_lat !== null || item.location_long !== null) && (
+            {item.location_lat !== null && item.location_long !== null && (
               <View style={styles.metaRow}>
                 <MapPin size={14} color="#AEB7CF" strokeWidth={2.2} />
                 <Text style={styles.metaText}>
-                  {item.location_lat ?? '--'}, {item.location_long ?? '--'}
+                  {item.location_lat}, {item.location_long}
                 </Text>
               </View>
             )}
