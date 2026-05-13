@@ -281,7 +281,7 @@ export default function FindQuestScreen() {
 
             <Text style={styles.modalLabel}>Requirements</Text>
             {formatRequirements(selectedQuest?.requirements ?? null).map((requirement, index) => (
-              <Text key={`${index}-${requirement}`} style={styles.modalBody}>
+              <Text key={String(index)} style={styles.modalBody}>
                 {requirement}
               </Text>
             ))}
