@@ -59,7 +59,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="archive"
         options={{
           title: 'Archive',
           tabBarIcon: ({ focused, color }) => <TabIcon focused={focused} color={color} Icon={Trophy} />,
