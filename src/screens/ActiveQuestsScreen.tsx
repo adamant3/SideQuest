@@ -40,6 +40,7 @@ type QuestAssignment = {
 const QUEST_VERIFICATION_RADIUS_METERS = 100;
 const QUEST_PROOF_PHOTO_COMPRESSION = 0.7;
 const XP_UPDATE_MAX_RETRIES = 3;
+const UNKNOWN_RARITY_LABEL = 'unknown';
 
 function toNumber(value: number | null): number | null {
   return value === null ? null : Number(value);
@@ -211,7 +212,9 @@ export default function ActiveQuestsScreen() {
           }
         }
 
-        throw new Error('Could not update XP due to concurrent updates. Please retry.');
+        throw new Error(
+          `Could not update XP after ${XP_UPDATE_MAX_RETRIES} attempts due to concurrent updates. Please retry.`
+        );
       } catch (err) {
         if (uploadedFilePath && !questMarkedCompleted) {
           await supabase.storage.from('quest-proofs').remove([uploadedFilePath]);
@@ -332,7 +335,7 @@ export default function ActiveQuestsScreen() {
               <View style={styles.questCard}>
                 <Text style={styles.questTitle}>{item.quest.title}</Text>
                 <Text style={styles.questMeta}>
-                  {(item.quest.rarity ?? 'unknown').toUpperCase()} • {item.quest.xp_reward} XP
+                  {(item.quest.rarity ?? UNKNOWN_RARITY_LABEL).toUpperCase()} • {item.quest.xp_reward} XP
                 </Text>
                 <Text numberOfLines={2} style={styles.questDescription}>
                   {item.quest.description}
