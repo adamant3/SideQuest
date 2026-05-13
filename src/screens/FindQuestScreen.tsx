@@ -77,6 +77,8 @@ const xpOptions: { value: XpFilter; label: string }[] = [
   { value: 'high', label: 'XP > 300' },
 ];
 
+const MAX_ACTIVE_NON_SPECIAL_QUESTS = 3;
+
 export default function FindQuestScreen() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -219,10 +221,10 @@ export default function FindQuestScreen() {
         return quest?.rarity !== 'special';
       }).length;
 
-      if (selectedQuest.rarity !== 'special' && nonSpecialActiveCount >= 3) {
+      if (selectedQuest.rarity !== 'special' && nonSpecialActiveCount >= MAX_ACTIVE_NON_SPECIAL_QUESTS) {
         Alert.alert(
           'Active quest limit reached',
-          'You can only have up to 3 active non-special quests at a time.'
+          `You can only have up to ${MAX_ACTIVE_NON_SPECIAL_QUESTS} active non-special quests at a time.`
         );
         return;
       }

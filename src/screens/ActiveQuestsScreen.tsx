@@ -37,6 +37,9 @@ type QuestAssignment = {
   quest: ActiveQuest;
 };
 
+const QUEST_VERIFICATION_RADIUS_METERS = 100;
+const QUEST_PROOF_PHOTO_QUALITY = 0.7;
+
 function toNumber(value: number | null): number | null {
   return value === null ? null : Number(value);
 }
@@ -222,10 +225,10 @@ export default function ActiveQuestsScreen() {
           quest.location_long
         );
 
-        if (distanceMeters > 100) {
+        if (distanceMeters > QUEST_VERIFICATION_RADIUS_METERS) {
           Alert.alert(
             'Too far from quest location',
-            `Move closer to the quest location (within 100m). You are currently ${Math.round(distanceMeters)}m away.`
+            `Move closer to the quest location (within ${QUEST_VERIFICATION_RADIUS_METERS}m). You are currently ${Math.round(distanceMeters)}m away.`
           );
           return;
         }
@@ -257,7 +260,7 @@ export default function ActiveQuestsScreen() {
     setIsSubmittingProof(true);
 
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: QUEST_PROOF_PHOTO_QUALITY });
 
       if (!photo?.uri) {
         throw new Error('No photo was captured.');
