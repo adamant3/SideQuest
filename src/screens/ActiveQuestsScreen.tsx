@@ -260,6 +260,7 @@ export default function ActiveQuestsScreen() {
     setIsSubmittingProof(true);
 
     try {
+      const earnedXp = pendingQuest.quest.xp_reward;
       const photo = await cameraRef.current.takePictureAsync({ quality: QUEST_PROOF_PHOTO_QUALITY });
 
       if (!photo?.uri) {
@@ -271,7 +272,7 @@ export default function ActiveQuestsScreen() {
       setCameraVisible(false);
       setPendingQuest(null);
       await loadActiveQuests();
-      setSuccessMessage(`Quest completed! +${pendingQuest.quest.xp_reward} XP`);
+      setSuccessMessage(`Quest completed! +${earnedXp} XP`);
     } catch (err) {
       Alert.alert('Unable to complete quest', err instanceof Error ? err.message : 'Unknown error.');
     } finally {
@@ -305,7 +306,7 @@ export default function ActiveQuestsScreen() {
               <View style={styles.questCard}>
                 <Text style={styles.questTitle}>{item.quest.title}</Text>
                 <Text style={styles.questMeta}>
-                  {item.quest.rarity.toUpperCase()} • {item.quest.xp_reward} XP
+                  {(item.quest.rarity ?? 'unknown').toUpperCase()} • {item.quest.xp_reward} XP
                 </Text>
                 <Text numberOfLines={2} style={styles.questDescription}>
                   {item.quest.description}
