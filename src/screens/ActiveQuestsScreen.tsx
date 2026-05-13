@@ -38,7 +38,8 @@ type QuestAssignment = {
 };
 
 const QUEST_VERIFICATION_RADIUS_METERS = 100;
-const QUEST_PROOF_PHOTO_QUALITY = 0.7;
+const QUEST_PROOF_PHOTO_COMPRESSION = 0.7;
+const XP_UPDATE_MAX_RETRIES = 3;
 
 function toNumber(value: number | null): number | null {
   return value === null ? null : Number(value);
@@ -140,57 +141,82 @@ export default function ActiveQuestsScreen() {
         throw new Error('Please sign in to verify quest completion.');
       }
 
-      const fileResponse = await fetch(photoUri);
-      const photoBlob = await fileResponse.blob();
-      const filePath = `${user.id}/${questAssignment.questId}-${Date.now()}.jpg`;
+      let uploadedFilePath: string | null = null;
+      let questMarkedCompleted = false;
 
-      const { error: uploadError } = await supabase.storage
-        .from('quest-proofs')
-        .upload(filePath, photoBlob, { contentType: 'image/jpeg', upsert: false });
+      try {
+        const fileResponse = await fetch(photoUri);
+        const photoBlob = await fileResponse.blob();
+        const filePath = `${user.id}/${questAssignment.questId}-${Date.now()}.jpg`;
 
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
+        const { error: uploadError } = await supabase.storage
+          .from('quest-proofs')
+          .upload(filePath, photoBlob, { contentType: 'image/jpeg', upsert: false });
 
-      const { data: publicUrlData } = supabase.storage.from('quest-proofs').getPublicUrl(filePath);
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
 
-      const { error: completeError } = await supabase
-        .from('user_quests')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          proof_image_url: publicUrlData.publicUrl,
-        })
-        .eq('user_id', user.id)
-        .eq('quest_id', questAssignment.questId)
-        .eq('status', 'active');
+        uploadedFilePath = filePath;
 
-      if (completeError) {
-        throw new Error(completeError.message);
-      }
+        const { data: publicUrlData } = supabase.storage.from('quest-proofs').getPublicUrl(filePath);
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('total_xp')
-        .eq('id', user.id)
-        .single();
+        const { error: completeError } = await supabase
+          .from('user_quests')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            proof_image_url: publicUrlData.publicUrl,
+          })
+          .eq('user_id', user.id)
+          .eq('quest_id', questAssignment.questId)
+          .eq('status', 'active');
 
-      if (profileError) {
-        throw new Error(profileError.message);
-      }
+        if (completeError) {
+          throw new Error(completeError.message);
+        }
 
-      const newTotalXp = (profile?.total_xp ?? 0) + questAssignment.quest.xp_reward;
+        questMarkedCompleted = true;
 
-      const { error: updateXpError } = await supabase
-        .from('profiles')
-        .update({
-          total_xp: newTotalXp,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        for (let attempt = 0; attempt < XP_UPDATE_MAX_RETRIES; attempt += 1) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('total_xp')
+            .eq('id', user.id)
+            .single();
 
-      if (updateXpError) {
-        throw new Error(updateXpError.message);
+          if (profileError) {
+            throw new Error(profileError.message);
+          }
+
+          const currentXp = profile?.total_xp ?? 0;
+          const nextXp = currentXp + questAssignment.quest.xp_reward;
+
+          const { data: updateResult, error: updateXpError } = await supabase
+            .from('profiles')
+            .update({
+              total_xp: nextXp,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', user.id)
+            .eq('total_xp', currentXp)
+            .select('id');
+
+          if (updateXpError) {
+            throw new Error(updateXpError.message);
+          }
+
+          if (updateResult && updateResult.length > 0) {
+            return;
+          }
+        }
+
+        throw new Error('Could not update XP due to concurrent updates. Please retry.');
+      } catch (err) {
+        if (uploadedFilePath && !questMarkedCompleted) {
+          await supabase.storage.from('quest-proofs').remove([uploadedFilePath]);
+        }
+        throw err;
       }
     },
     []
@@ -215,7 +241,7 @@ export default function ActiveQuestsScreen() {
         }
 
         const currentPosition = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
+          accuracy: Location.Accuracy.High,
         });
 
         const distanceMeters = haversineDistanceMeters(
@@ -261,7 +287,7 @@ export default function ActiveQuestsScreen() {
 
     try {
       const earnedXp = pendingQuest.quest.xp_reward;
-      const photo = await cameraRef.current.takePictureAsync({ quality: QUEST_PROOF_PHOTO_QUALITY });
+      const photo = await cameraRef.current.takePictureAsync({ quality: QUEST_PROOF_PHOTO_COMPRESSION });
 
       if (!photo?.uri) {
         throw new Error('No photo was captured.');
