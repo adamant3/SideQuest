@@ -29,6 +29,27 @@ type Quest = {
   requirements: Record<string, unknown> | null;
 };
 
+function formatRequirements(requirements: Record<string, unknown> | null) {
+  if (!requirements || Object.keys(requirements).length === 0) {
+    return ['No requirements listed.'];
+  }
+
+  return Object.entries(requirements).map(([key, value]) => {
+    const normalizedKey = key.replace(/_/g, ' ');
+    const label = normalizedKey.charAt(0).toUpperCase() + normalizedKey.slice(1);
+
+    if (Array.isArray(value)) {
+      return `• ${label}: ${value.join(', ')}`;
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      return `• ${label}: ${JSON.stringify(value)}`;
+    }
+
+    return `• ${label}: ${String(value)}`;
+  });
+}
+
 const rarityOptions: Array<'all' | Rarity> = [
   'all',
   'common',
@@ -246,11 +267,11 @@ export default function FindQuestScreen() {
             <Text style={styles.modalBody}>{selectedQuest?.description}</Text>
 
             <Text style={styles.modalLabel}>Requirements</Text>
-            <Text style={styles.modalBody}>
-              {selectedQuest?.requirements
-                ? JSON.stringify(selectedQuest.requirements, null, 2)
-                : 'No requirements listed.'}
-            </Text>
+            {formatRequirements(selectedQuest?.requirements ?? null).map((requirement) => (
+              <Text key={requirement} style={styles.modalBody}>
+                {requirement}
+              </Text>
+            ))}
           </View>
         </View>
       </Modal>
