@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -84,6 +85,7 @@ export default function FindQuestScreen() {
   const [selectedXpFilter, setSelectedXpFilter] = useState<XpFilter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null);
+  const [startingQuestId, setStartingQuestId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -182,6 +184,69 @@ export default function FindQuestScreen() {
         )}
       </Pressable>
     );
+  };
+
+  const handleStartQuest = async () => {
+    if (!selectedQuest) {
+      return;
+    }
+
+    setStartingQuestId(selectedQuest.id);
+
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      if (userError || !user) {
+        Alert.alert('Sign in required', 'Please sign in to start a quest.');
+        return;
+      }
+
+      const { data: activeAssignments, error: activeError } = await supabase
+        .from('user_quests')
+        .select('quest_id, quests(rarity)')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (activeError) {
+        Alert.alert('Unable to start quest', activeError.message);
+        return;
+      }
+
+      const nonSpecialActiveCount = (activeAssignments ?? []).filter((assignment) => {
+        const joinedQuest = assignment.quests;
+        const quest = Array.isArray(joinedQuest) ? joinedQuest[0] : joinedQuest;
+        return quest?.rarity !== 'special';
+      }).length;
+
+      if (selectedQuest.rarity !== 'special' && nonSpecialActiveCount >= 3) {
+        Alert.alert(
+          'Active quest limit reached',
+          'You can only have up to 3 active non-special quests at a time.'
+        );
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('user_quests').insert({
+        user_id: user.id,
+        quest_id: selectedQuest.id,
+        status: 'active',
+      });
+
+      if (insertError) {
+        if (insertError.code === '23505') {
+          Alert.alert('Quest already active', 'You have already started this quest.');
+          return;
+        }
+        Alert.alert('Unable to start quest', insertError.message);
+        return;
+      }
+
+      Alert.alert('Quest started', `${selectedQuest.title} has been added to your active quests.`);
+      setSelectedQuest(null);
+    } finally {
+      setStartingQuestId(null);
+    }
   };
 
   return (
@@ -285,6 +350,20 @@ export default function FindQuestScreen() {
                 {requirement}
               </Text>
             ))}
+
+            <Pressable
+              onPress={handleStartQuest}
+              disabled={!selectedQuest || startingQuestId === selectedQuest?.id}
+              style={({ pressed }) => [
+                styles.startButton,
+                (pressed || startingQuestId === selectedQuest?.id) && styles.startButtonPressed,
+              ]}>
+              {startingQuestId === selectedQuest?.id ? (
+                <ActivityIndicator color="#F6F8FE" size="small" />
+              ) : (
+                <Text style={styles.startButtonText}>Start Quest</Text>
+              )}
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -487,5 +566,21 @@ const styles = StyleSheet.create({
     color: '#DEE4F4',
     fontSize: 14,
     lineHeight: 20,
+  },
+  startButton: {
+    marginTop: 8,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#4667F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startButtonPressed: {
+    opacity: 0.85,
+  },
+  startButtonText: {
+    color: '#F6F8FE',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
