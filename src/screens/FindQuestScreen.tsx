@@ -22,7 +22,7 @@ type Quest = {
   id: string;
   title: string;
   description: string;
-  rarity: Rarity;
+  rarity: string;
   xp_reward: number;
   location_lat: number | null;
   location_long: number | null;
@@ -132,7 +132,12 @@ export default function FindQuestScreen() {
   }, [quests, selectedRarity, selectedXpFilter]);
 
   const renderQuest = ({ item }: { item: Quest }) => {
-    const rarityStyle = rarityColors[item.rarity] ?? rarityColors.common;
+    const rarityKey = item.rarity in rarityColors ? (item.rarity as Rarity) : 'common';
+    const rarityStyle = rarityColors[rarityKey];
+
+    if (!(item.rarity in rarityColors)) {
+      console.warn('Unknown quest rarity:', item.rarity);
+    }
 
     return (
       <Pressable
@@ -253,12 +258,20 @@ export default function FindQuestScreen() {
         )}
       </View>
 
-      <Modal visible={Boolean(selectedQuest)} animationType="slide" transparent onRequestClose={() => setSelectedQuest(null)}>
+      <Modal
+        visible={Boolean(selectedQuest)}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedQuest(null)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
+          <View accessible accessibilityLabel="Quest details" style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedQuest?.title}</Text>
-              <Pressable onPress={() => setSelectedQuest(null)} style={styles.closeButton}>
+              <Pressable
+                onPress={() => setSelectedQuest(null)}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close quest details">
                 <X size={18} color="#D5D9E5" />
               </Pressable>
             </View>
@@ -267,8 +280,8 @@ export default function FindQuestScreen() {
             <Text style={styles.modalBody}>{selectedQuest?.description}</Text>
 
             <Text style={styles.modalLabel}>Requirements</Text>
-            {formatRequirements(selectedQuest?.requirements ?? null).map((requirement) => (
-              <Text key={requirement} style={styles.modalBody}>
+            {formatRequirements(selectedQuest?.requirements ?? null).map((requirement, index) => (
+              <Text key={`${index}-${requirement}`} style={styles.modalBody}>
                 {requirement}
               </Text>
             ))}

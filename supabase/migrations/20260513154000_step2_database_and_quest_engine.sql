@@ -25,6 +25,9 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists idx_profiles_total_xp_username
+  on public.profiles (total_xp desc, username asc);
+
 -- Quests
 create table if not exists public.quests (
   id uuid primary key default gen_random_uuid(),
