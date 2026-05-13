@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Compass, CircleCheck, Trophy, Medal, User } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabIcon({
   focused,
@@ -15,6 +16,9 @@ function TabIcon({
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       screenOptions={{
@@ -26,11 +30,11 @@ export default function TabLayout() {
           position: 'absolute',
           left: 12,
           right: 12,
-          bottom: 16,
+          bottom: Math.max(insets.bottom, 12),
           borderTopWidth: 0,
           borderRadius: 28,
-          height: 74,
-          paddingBottom: 10,
+          height: 64 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 10,
           backgroundColor: '#11131a',
           shadowColor: '#000000',
