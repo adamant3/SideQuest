@@ -42,10 +42,6 @@ const QUEST_PROOF_PHOTO_COMPRESSION = 0.7;
 const XP_UPDATE_MAX_RETRIES = 3;
 const UNKNOWN_RARITY_LABEL = 'unknown';
 
-function toNumber(value: number | null): number | null {
-  return value === null ? null : Number(value);
-}
-
 function haversineDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const toRadians = (value: number) => (value * Math.PI) / 180;
   const earthRadius = 6371000;
@@ -118,8 +114,8 @@ export default function ActiveQuestsScreen() {
           createdAt: row.created_at,
           quest: {
             ...joinedQuest,
-            location_lat: toNumber(joinedQuest.location_lat),
-            location_long: toNumber(joinedQuest.location_long),
+            location_lat: joinedQuest.location_lat,
+            location_long: joinedQuest.location_long,
           },
         };
       })
@@ -212,9 +208,7 @@ export default function ActiveQuestsScreen() {
           }
         }
 
-        throw new Error(
-          `Could not update XP after ${XP_UPDATE_MAX_RETRIES} attempts due to concurrent updates. Please retry.`
-        );
+        throw new Error(`Could not update XP after ${XP_UPDATE_MAX_RETRIES} attempts. Please retry.`);
       } catch (err) {
         if (uploadedFilePath && !questMarkedCompleted) {
           await supabase.storage.from('quest-proofs').remove([uploadedFilePath]);
