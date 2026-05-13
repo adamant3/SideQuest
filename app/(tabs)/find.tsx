@@ -1,7 +1,7 @@
 import React from 'react';
 
-import FindScreen from '@/src/screens/FindScreen';
+import FindQuestScreen from '@/src/screens/FindQuestScreen';
 
 export default function FindRoute() {
-  return <FindScreen />;
+  return <FindQuestScreen />;
 }
