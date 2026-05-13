@@ -55,7 +55,7 @@ const xpOptions: { value: XpFilter; label: string }[] = [
   { value: 'high', label: 'XP > 300' },
 ];
 
-export default function FindScreen() {
+export default function FindQuestScreen() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
