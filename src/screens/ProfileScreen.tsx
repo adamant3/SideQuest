@@ -158,7 +158,7 @@ export default function ProfileScreen() {
         throw new Error(profileResult.error.message);
       }
 
-      let resolvedProfile = ((profileResult.data ?? [])[0] ?? null) as Profile | null;
+      let resolvedProfile = (profileResult.data?.[0] ?? null) as Profile | null;
 
       if (!resolvedProfile) {
         const fallbackUsername =
@@ -183,7 +183,7 @@ export default function ProfileScreen() {
           throw new Error(createProfileError.message);
         }
 
-        resolvedProfile = ((createdProfile ?? [])[0] ?? null) as Profile | null;
+        resolvedProfile = (createdProfile?.[0] ?? null) as Profile | null;
       }
 
       if (!resolvedProfile) {

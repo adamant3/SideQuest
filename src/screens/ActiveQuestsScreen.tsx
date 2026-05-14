@@ -434,12 +434,12 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     paddingHorizontal: 20,
-    marginBottom: 14,
   },
   subtitle: {
     color: '#AAB3C8',
     fontSize: 13,
     marginTop: 6,
+    marginBottom: 14,
   },
   listContent: {
     paddingBottom: 140,
