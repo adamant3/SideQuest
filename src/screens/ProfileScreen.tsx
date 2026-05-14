@@ -5,12 +5,13 @@ import {
   Dimensions,
   FlatList,
   Image,
-  SafeAreaView,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/src/lib/supabase/client';
 
@@ -116,6 +117,18 @@ export default function ProfileScreen() {
   const [trophyPhotos, setTrophyPhotos] = useState<TrophyPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
@@ -254,6 +267,13 @@ export default function ProfileScreen() {
             )}
           />
         )}
+
+        <Pressable
+          onPress={handleSignOut}
+          disabled={isSigningOut}
+          style={({ pressed }) => [styles.signOutButton, (pressed || isSigningOut) && styles.signOutButtonPressed]}>
+          <Text style={styles.signOutLabel}>{isSigningOut ? 'Signing out…' : 'Sign Out'}</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -403,5 +423,23 @@ const styles = StyleSheet.create({
   trophyImage: {
     width: '100%',
     height: '100%',
+  },
+  signOutButton: {
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A3040',
+    backgroundColor: '#171B25',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  signOutButtonPressed: {
+    opacity: 0.7,
+  },
+  signOutLabel: {
+    color: '#8891AA',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
