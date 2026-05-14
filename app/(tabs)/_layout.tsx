@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Compass, CircleCheck, Trophy, Medal, User } from 'lucide-react-native';
+import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabIcon({
@@ -12,7 +13,7 @@ function TabIcon({
   color: string;
   Icon: React.ComponentType<{ color: string; size?: number; strokeWidth?: number }>;
 }) {
-  return <Icon color={color} size={focused ? 24 : 22} strokeWidth={focused ? 2.5 : 2.2} />;
+  return <Icon color={color} size={focused ? 26 : 24} strokeWidth={focused ? 2.5 : 2.2} />;
 }
 
 export default function TabLayout() {
@@ -47,6 +48,12 @@ export default function TabLayout() {
           fontSize: 11,
           fontWeight: '600',
         },
+        tabBarButton: (props) => (
+          <Pressable
+            {...props}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          />
+        ),
       }}>
       <Tabs.Screen
         name="find"
