@@ -136,10 +136,7 @@ export default function ProfileScreen() {
       const user = userData.user;
 
       if (userError || !user) {
-        setError('Please sign in to view your profile.');
-        setProfile(null);
-        setTrophyPhotos([]);
-        return;
+        throw new Error('Please sign in to view your profile.');
       }
 
       const [profileResult, questsResult] = await Promise.all([
