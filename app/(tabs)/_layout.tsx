@@ -48,11 +48,8 @@ export default function TabLayout() {
           fontSize: 11,
           fontWeight: '600',
         },
-        tabBarButton: (props) => (
-          <Pressable
-            {...props}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          />
+        tabBarButton: ({ ref: _ref, ...props }) => (
+          <Pressable {...props} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} />
         ),
       }}>
       <Tabs.Screen
