@@ -123,9 +123,11 @@ export default function RanksScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Medal color="#4667F5" size={22} strokeWidth={2.2} />
-          <Text style={styles.title}>Leaderboard</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.header}>
+            <Medal color="#4667F5" size={22} strokeWidth={2.2} />
+            <Text style={styles.title}>Leaderboard</Text>
+          </View>
         </View>
 
         <View style={styles.tabBar}>
@@ -210,6 +212,9 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#0F1117',
     paddingTop: 12,
+  },
+  headerContent: {
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',

@@ -306,8 +306,10 @@ export default function ActiveQuestsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Active Quests</Text>
-        <Text style={styles.subtitle}>Verify completion with location + photo proof.</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>Active Quests</Text>
+          <Text style={styles.subtitle}>Verify completion with location + photo proof.</Text>
+        </View>
 
         {isLoading ? (
           <View style={styles.stateContainer}>
@@ -430,11 +432,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
   },
+  headerContent: {
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
   subtitle: {
     color: '#AAB3C8',
     fontSize: 13,
     marginTop: 6,
-    marginBottom: 14,
   },
   listContent: {
     paddingBottom: 140,

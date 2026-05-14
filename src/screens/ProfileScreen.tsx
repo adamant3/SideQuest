@@ -131,85 +131,90 @@ export default function ProfileScreen() {
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const user = userData.user;
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    const user = userData.user;
-
-    if (userError || !user) {
-      setError('Please sign in to view your profile.');
-      setIsLoading(false);
-      return;
-    }
-
-    const [profileResult, questsResult] = await Promise.all([
-      supabase.from('profiles').select('id, username, bio, avatar_url, total_xp, rank').eq('id', user.id).maybeSingle(),
-      supabase
-        .from('user_quests')
-        .select('quest_id, proof_image_url, quest:quests!inner(title)')
-        .eq('user_id', user.id)
-        .eq('status', 'completed')
-        .not('proof_image_url', 'is', null)
-        .order('completed_at', { ascending: false })
-        .limit(30),
-    ]);
-
-    if (profileResult.error) {
-      setError(profileResult.error.message);
-      setIsLoading(false);
-      return;
-    }
-
-    let resolvedProfile = profileResult.data as Profile | null;
-
-    if (!resolvedProfile) {
-      const fallbackUsername =
-        user.user_metadata?.username ??
-        user.user_metadata?.display_name ??
-        user.email?.split('@')[0] ??
-        `user_${user.id.slice(0, 8)}`;
-      const { data: createdProfile, error: createProfileError } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            id: user.id,
-            username: fallbackUsername,
-            total_xp: 0,
-          },
-          { onConflict: 'id' }
-        )
-        .select('id, username, bio, avatar_url, total_xp, rank')
-        .maybeSingle();
-
-      if (createProfileError) {
-        setError(createProfileError.message);
-        setIsLoading(false);
+      if (userError || !user) {
+        setError('Please sign in to view your profile.');
+        setProfile(null);
+        setTrophyPhotos([]);
         return;
       }
 
-      resolvedProfile = createdProfile as Profile | null;
-    }
+      const [profileResult, questsResult] = await Promise.all([
+        supabase.from('profiles').select('id, username, bio, avatar_url, total_xp, rank').eq('id', user.id).limit(1),
+        supabase
+          .from('user_quests')
+          .select('quest_id, proof_image_url, quest:quests!inner(title)')
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+          .not('proof_image_url', 'is', null)
+          .order('completed_at', { ascending: false })
+          .limit(30),
+      ]);
 
-    if (!resolvedProfile) {
-      setError('Profile not found.');
+      if (profileResult.error) {
+        throw new Error(profileResult.error.message);
+      }
+
+      let resolvedProfile = ((profileResult.data ?? [])[0] ?? null) as Profile | null;
+
+      if (!resolvedProfile) {
+        const fallbackUsername =
+          user.user_metadata?.username ??
+          user.user_metadata?.display_name ??
+          user.email?.split('@')[0] ??
+          `user_${user.id.slice(0, 8)}`;
+        const { data: createdProfile, error: createProfileError } = await supabase
+          .from('profiles')
+          .upsert(
+            {
+              id: user.id,
+              username: fallbackUsername,
+              total_xp: 0,
+            },
+            { onConflict: 'id' }
+          )
+          .select('id, username, bio, avatar_url, total_xp, rank')
+          .limit(1);
+
+        if (createProfileError) {
+          throw new Error(createProfileError.message);
+        }
+
+        resolvedProfile = ((createdProfile ?? [])[0] ?? null) as Profile | null;
+      }
+
+      if (!resolvedProfile) {
+        throw new Error('Profile not found.');
+      }
+
+      if (questsResult.error) {
+        throw new Error(questsResult.error.message);
+      }
+
+      const photos: TrophyPhoto[] = ((questsResult.data ?? []) as CompletedQuestRow[])
+        .filter((row) => Boolean(row.proof_image_url))
+        .map((row) => {
+          const questData = Array.isArray(row.quest) ? row.quest[0] : row.quest;
+          return {
+            quest_id: row.quest_id,
+            proof_image_url: row.proof_image_url as string,
+            quest_title: questData?.title ?? 'Quest',
+          };
+        });
+
+      setProfile(resolvedProfile);
+      setTrophyPhotos(photos);
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+      setProfile(null);
+      setTrophyPhotos([]);
+      setError(err instanceof Error ? err.message : 'Unable to load profile.');
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    setProfile(resolvedProfile);
-
-    const photos: TrophyPhoto[] = ((questsResult.data ?? []) as CompletedQuestRow[])
-      .filter((row) => Boolean(row.proof_image_url))
-      .map((row) => {
-        const questData = Array.isArray(row.quest) ? row.quest[0] : row.quest;
-        return {
-          quest_id: row.quest_id,
-          proof_image_url: row.proof_image_url as string,
-          quest_title: questData?.title ?? 'Quest',
-        };
-      });
-
-    setTrophyPhotos(photos);
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
