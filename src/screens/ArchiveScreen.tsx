@@ -173,11 +173,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0F1117',
+    width: '100%',
   },
   container: {
     flex: 1,
+    width: '100%',
     backgroundColor: '#0F1117',
-    paddingHorizontal: 16,
     paddingTop: 12,
   },
   header: {

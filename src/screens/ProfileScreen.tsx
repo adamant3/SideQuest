@@ -37,11 +37,9 @@ type CompletedQuestRow = {
 };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const HORIZONTAL_PADDING = 16;
 const TROPHY_NUM_COLUMNS = 3;
 const TROPHY_GAP_SIZE = 4;
-const TROPHY_CELL_SIZE =
-  (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - TROPHY_GAP_SIZE * (TROPHY_NUM_COLUMNS - 1)) / TROPHY_NUM_COLUMNS;
+const TROPHY_CELL_SIZE = (SCREEN_WIDTH - TROPHY_GAP_SIZE * (TROPHY_NUM_COLUMNS - 1)) / TROPHY_NUM_COLUMNS;
 
 const XP_RANK_THRESHOLDS = { adventurer: 500, legend: 1500 } as const;
 
@@ -144,7 +142,7 @@ export default function ProfileScreen() {
     }
 
     const [profileResult, questsResult] = await Promise.all([
-      supabase.from('profiles').select('id, username, bio, avatar_url, total_xp, rank').eq('id', user.id).single(),
+      supabase.from('profiles').select('id, username, bio, avatar_url, total_xp, rank').eq('id', user.id).maybeSingle(),
       supabase
         .from('user_quests')
         .select('quest_id, proof_image_url, quest:quests!inner(title)')
@@ -161,7 +159,43 @@ export default function ProfileScreen() {
       return;
     }
 
-    setProfile(profileResult.data as Profile);
+    let resolvedProfile = profileResult.data as Profile | null;
+
+    if (!resolvedProfile) {
+      const fallbackUsername =
+        user.user_metadata?.username ??
+        user.user_metadata?.display_name ??
+        user.email?.split('@')[0] ??
+        `user_${user.id.slice(0, 8)}`;
+      const { data: createdProfile, error: createProfileError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: user.id,
+            username: fallbackUsername,
+            total_xp: 0,
+          },
+          { onConflict: 'id' }
+        )
+        .select('id, username, bio, avatar_url, total_xp, rank')
+        .maybeSingle();
+
+      if (createProfileError) {
+        setError(createProfileError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      resolvedProfile = createdProfile as Profile | null;
+    }
+
+    if (!resolvedProfile) {
+      setError('Profile not found.');
+      setIsLoading(false);
+      return;
+    }
+
+    setProfile(resolvedProfile);
 
     const photos: TrophyPhoto[] = ((questsResult.data ?? []) as CompletedQuestRow[])
       .filter((row) => Boolean(row.proof_image_url))
@@ -283,12 +317,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0F1117',
+    width: '100%',
   },
   scroll: {
     flex: 1,
+    width: '100%',
   },
   scrollContent: {
-    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 140,
     gap: 12,
