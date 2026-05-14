@@ -17,7 +17,7 @@ function TabIcon({
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 4);
+  const hasBottomInset = insets.bottom > 0;
 
   return (
     <Tabs
@@ -30,11 +30,11 @@ export default function TabLayout() {
           position: 'absolute',
           left: 12,
           right: 12,
-          bottom: Math.max(insets.bottom, 8),
+          bottom: hasBottomInset ? insets.bottom : 8,
           borderTopWidth: 0,
           borderRadius: 28,
-          height: 54 + bottomInset,
-          paddingBottom: bottomInset,
+          height: 60,
+          paddingBottom: hasBottomInset ? insets.bottom : 0,
           paddingTop: 8,
           backgroundColor: '#11131a',
           shadowColor: '#000000',

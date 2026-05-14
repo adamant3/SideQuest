@@ -57,19 +57,22 @@ export default function AuthScreen() {
         }
 
         if (data.user) {
-          // Create the profile row; upsert with ignoreDuplicates so a DB trigger
-          // running first won't cause a conflict error.
-          const { error: profileError } = await supabase.from('profiles').upsert(
-            {
-              id: data.user.id,
-              username: `user_${data.user.id.slice(0, 8)}`,
-              total_xp: 0,
-            },
-            { onConflict: 'id', ignoreDuplicates: true }
-          );
+          // Only attempt direct profile creation when an authenticated session is present.
+          // Some Supabase setups require auth.uid() in RLS policies and return null during
+          // email-confirmation sign-up flows (session can be null).
+          if (data.session) {
+            const { error: profileError } = await supabase.from('profiles').upsert(
+              {
+                id: data.user.id,
+                username: `user_${data.user.id.slice(0, 8)}`,
+                total_xp: 0,
+              },
+              { onConflict: 'id', ignoreDuplicates: true }
+            );
 
-          if (profileError) {
-            console.error('Profile creation failed:', profileError.message);
+            if (profileError) {
+              console.warn('Profile creation deferred:', profileError.message);
+            }
           }
         }
       }
