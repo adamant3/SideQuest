@@ -5,12 +5,12 @@ import {
   FlatList,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Grid2x2, List, MapPin, Sparkles, X } from 'lucide-react-native';
 
 import { supabase } from '@/src/lib/supabase/client';
