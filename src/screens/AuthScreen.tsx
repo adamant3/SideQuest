@@ -71,7 +71,7 @@ export default function AuthScreen() {
             );
 
             if (profileError) {
-              console.warn('Profile creation deferred:', profileError.message);
+              console.warn('Profile creation failed (will retry on profile screen):', profileError.message);
             }
           }
         }

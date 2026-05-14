@@ -37,11 +37,9 @@ type CompletedQuestRow = {
 };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const HORIZONTAL_PADDING = 0;
 const TROPHY_NUM_COLUMNS = 3;
 const TROPHY_GAP_SIZE = 4;
-const TROPHY_CELL_SIZE =
-  (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - TROPHY_GAP_SIZE * (TROPHY_NUM_COLUMNS - 1)) / TROPHY_NUM_COLUMNS;
+const TROPHY_CELL_SIZE = (SCREEN_WIDTH - TROPHY_GAP_SIZE * (TROPHY_NUM_COLUMNS - 1)) / TROPHY_NUM_COLUMNS;
 
 const XP_RANK_THRESHOLDS = { adventurer: 500, legend: 1500 } as const;
 
