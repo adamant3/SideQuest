@@ -121,8 +121,13 @@ export default function ProfileScreen() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    await supabase.auth.signOut();
-    setIsSigningOut(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   const loadProfile = useCallback(async () => {

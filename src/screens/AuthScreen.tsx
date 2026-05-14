@@ -59,7 +59,7 @@ export default function AuthScreen() {
         if (data.user) {
           // Create the profile row; upsert with ignoreDuplicates so a DB trigger
           // running first won't cause a conflict error.
-          await supabase.from('profiles').upsert(
+          const { error: profileError } = await supabase.from('profiles').upsert(
             {
               id: data.user.id,
               username: `user_${data.user.id.slice(0, 8)}`,
@@ -67,6 +67,10 @@ export default function AuthScreen() {
             },
             { onConflict: 'id', ignoreDuplicates: true }
           );
+
+          if (profileError) {
+            console.error('Profile creation failed:', profileError.message);
+          }
         }
       }
     } finally {
