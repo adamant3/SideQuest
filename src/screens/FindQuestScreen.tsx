@@ -388,11 +388,10 @@ const styles = StyleSheet.create({
   topBar: {
     gap: 10,
     marginBottom: 14,
-    paddingHorizontal: 16,
   },
   filterScroll: {
     gap: 8,
-    paddingRight: 6,
+    paddingHorizontal: 20,
   },
   secondaryBar: {
     flexDirection: 'row',
@@ -402,7 +401,7 @@ const styles = StyleSheet.create({
   },
   xpScroll: {
     gap: 8,
-    paddingRight: 6,
+    paddingHorizontal: 20,
   },
   filterChip: {
     borderWidth: 1,

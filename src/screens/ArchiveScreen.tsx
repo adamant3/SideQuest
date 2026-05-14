@@ -119,11 +119,13 @@ export default function ArchiveScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <CheckCircle color="#4667F5" size={22} strokeWidth={2.2} />
-          <Text style={styles.title}>Archive</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.header}>
+            <CheckCircle color="#4667F5" size={22} strokeWidth={2.2} />
+            <Text style={styles.title}>Archive</Text>
+          </View>
+          <Text style={styles.subtitle}>Every quest you've ever conquered.</Text>
         </View>
-        <Text style={styles.subtitle}>Every quest you've ever conquered.</Text>
 
         {isLoading ? (
           <View style={styles.stateContainer}>
@@ -180,6 +182,9 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#0F1117',
     paddingTop: 12,
+  },
+  headerContent: {
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
