@@ -230,11 +230,12 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#171B25',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#2A3040',
     padding: 4,
     marginBottom: 16,
+    marginHorizontal: 16,
   },
   tab: {
     flex: 1,
@@ -263,10 +264,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#171B25',
     borderWidth: 1,
     borderColor: '#2A3040',
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
     gap: 12,
+    marginHorizontal: 16,
   },
   entryRowHighlight: {
     borderColor: '#4667F5',

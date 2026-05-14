@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   questCard: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 12,
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
   },
   questCardList: {
-    width: '100%',
+    marginHorizontal: 16,
   },
   questHeader: {
     gap: 8,
