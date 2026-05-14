@@ -77,7 +77,11 @@ function RootLayoutNav() {
       const userId = session.user.id;
       const fallbackUsername = `user_${userId.slice(0, 8).toLowerCase()}`;
 
-      const { data, error } = await supabase.from('profiles').select('username').eq('id', userId).limit(1);
+      const { data: profileRow, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', userId)
+        .maybeSingle();
 
       if (!active) {
         return;
@@ -89,8 +93,6 @@ function RootLayoutNav() {
         setIsProfileLoading(false);
         return;
       }
-
-      const profileRow = data?.[0] as { username: string | null } | undefined;
 
       if (!profileRow) {
         const { error: createError } = await supabase.from('profiles').upsert(
@@ -127,7 +129,7 @@ function RootLayoutNav() {
     return () => {
       active = false;
     };
-  }, [session?.user.id]);
+  }, [session]);
 
   if (isLoading || isProfileLoading) {
     return null;

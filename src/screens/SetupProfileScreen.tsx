@@ -61,11 +61,11 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       setUserId(user.id);
 
       const fallbackUsername = `user_${user.id.slice(0, 8).toLowerCase()}`;
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('username, bio, avatar_url')
         .eq('id', user.id)
-        .limit(1);
+        .maybeSingle();
 
       if (!active) {
         return;
@@ -80,7 +80,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
         return;
       }
 
-      const existing = profile?.[0];
+      const existing = profileData;
       setUsername(existing?.username ?? fallbackUsername);
       setBio(existing?.bio ?? '');
       setAvatarUri(existing?.avatar_url ?? null);
@@ -168,7 +168,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
 
     const avatarResponse = await fetch(avatarUri);
     const avatarBlob = await avatarResponse.blob();
-    const filePath = `${userId}/avatar-${Date.now()}.jpg`;
+    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
