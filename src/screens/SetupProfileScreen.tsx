@@ -233,16 +233,23 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
 
       if (exactError) {
         try {
-          const parsed = JSON.parse(responseText) as
-            | { message?: string; error?: string; error_description?: string }
-            | null;
+          const parsed: unknown = JSON.parse(responseText);
+          const parsedObject =
+            parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+          const parsedMessage =
+            typeof parsedObject?.message === 'string' ? parsedObject.message.trim() : '';
+          const parsedErrorDescription =
+            typeof parsedObject?.error_description === 'string'
+              ? parsedObject.error_description.trim()
+              : '';
+          const parsedError = typeof parsedObject?.error === 'string' ? parsedObject.error.trim() : '';
           exactError =
-            parsed?.message?.trim() ||
-            parsed?.error_description?.trim() ||
-            parsed?.error?.trim() ||
-            exactError;
-        } catch {
-          // Keep raw response text when it is not JSON.
+            parsedMessage || parsedErrorDescription || parsedError || exactError;
+        } catch (parseError) {
+          console.warn(
+            'Failed to parse Supabase upload error response:',
+            parseError instanceof Error ? parseError.message : parseError
+          );
         }
       }
 
