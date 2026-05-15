@@ -25,6 +25,13 @@ const USERNAME_PATTERN = /^[a-z0-9._]+$/;
 const AVATAR_BUCKET_NAME = 'avatars';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const SUPPORTED_AVATAR_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+
+type ReactNativeFormDataFile = {
+  uri: string;
+  name: string;
+  type: string;
+};
 
 export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -180,17 +187,20 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     }
 
     const extensionMatch = avatarUri.match(/\.(\w+)(?:\?|#|$)/);
-    const extension = extensionMatch?.[1]?.toLowerCase() ?? 'jpg';
+    const parsedExtension = extensionMatch?.[1]?.toLowerCase();
+    const extension =
+      parsedExtension && SUPPORTED_AVATAR_EXTENSIONS.has(parsedExtension) ? parsedExtension : 'jpg';
     const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
     const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
 
     const formData = new FormData();
-    formData.append('file', {
+    const formDataFile: ReactNativeFormDataFile = {
       uri: avatarUri,
       name: `avatar.${extension}`,
       type: mimeType,
-    } as any);
+    };
+    formData.append('file', formDataFile as unknown as Blob);
 
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
@@ -203,8 +213,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     });
 
     if (!uploadResponse.ok) {
-      const uploadErrorText = await uploadResponse.text();
-      throw new Error(uploadErrorText || 'Avatar upload failed.');
+      throw new Error('Avatar upload failed. Please try again.');
     }
 
     const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
