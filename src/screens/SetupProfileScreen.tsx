@@ -195,8 +195,8 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     }
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (sessionError || !accessToken) {
+    const session = sessionData.session;
+    if (sessionError || !session?.access_token) {
       throw new Error(sessionError?.message ?? 'Could not get an authenticated session.');
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -220,7 +220,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${session.access_token}`,
         apikey: SUPABASE_ANON_KEY,
         'x-upsert': 'true',
       },
@@ -228,7 +228,32 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     });
 
     if (!uploadResponse.ok) {
-      throw new Error(`Avatar upload failed (status ${uploadResponse.status}). Please try again.`);
+      const responseText = await uploadResponse.text();
+      let exactError = responseText.trim();
+
+      if (exactError) {
+        try {
+          const parsed: unknown = JSON.parse(responseText);
+          const parsedObject =
+            parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+          const parsedMessage =
+            typeof parsedObject?.message === 'string' ? parsedObject.message.trim() : '';
+          const parsedErrorDescription =
+            typeof parsedObject?.error_description === 'string'
+              ? parsedObject.error_description.trim()
+              : '';
+          const parsedError = typeof parsedObject?.error === 'string' ? parsedObject.error.trim() : '';
+          exactError =
+            parsedMessage || parsedErrorDescription || parsedError || exactError;
+        } catch (parseError) {
+          console.warn(
+            'Failed to parse Supabase upload error response:',
+            parseError instanceof Error ? parseError.message : parseError
+          );
+        }
+      }
+
+      throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
     }
 
     const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
@@ -270,10 +295,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       try {
         uploadedAvatarUrl = await uploadAvatarIfNeeded();
       } catch (err) {
-        Alert.alert(
-          'Avatar upload failed',
-          err instanceof Error ? err.message : 'Could not upload your avatar. Please try again.'
-        );
+        Alert.alert('Avatar upload failed', err instanceof Error ? err.message : String(err));
         return;
       }
 
