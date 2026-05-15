@@ -19,10 +19,13 @@ import { supabase } from '@/src/lib/supabase/client';
 
 type SetupProfileScreenProps = {
   onComplete: () => void;
+  mode?: 'setup' | 'edit';
+  onCancel?: () => void;
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._]+$/;
 const AVATAR_BUCKET_NAME = 'avatars';
+const AVATAR_PUBLIC_URL_MARKER = `/storage/v1/object/public/${AVATAR_BUCKET_NAME}/`;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -51,7 +54,33 @@ function cleanLocalFileUri(uri: string): string {
   return cleaned;
 }
 
-export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
+function extractAvatarStoragePath(pathOrUrl: string | null): string | null {
+  if (!pathOrUrl) {
+    return null;
+  }
+
+  const trimmed = pathOrUrl.trim();
+  const markerIndex = trimmed.indexOf(AVATAR_PUBLIC_URL_MARKER);
+
+  if (markerIndex === -1) {
+    return trimmed;
+  }
+
+  const rawPath = trimmed.slice(markerIndex + AVATAR_PUBLIC_URL_MARKER.length).split('?')[0];
+  return decodeURIComponent(rawPath);
+}
+
+function getAvatarPublicUrlFromPath(pathOrUrl: string | null): string | null {
+  const avatarPath = extractAvatarStoragePath(pathOrUrl);
+  if (!avatarPath) {
+    return null;
+  }
+
+  const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(avatarPath);
+  return data.publicUrl;
+}
+
+export default function SetupProfileScreen({ onComplete, mode = 'setup', onCancel }: SetupProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
@@ -111,7 +140,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       const existing = profileData;
       setUsername(existing?.username ?? fallbackUsername);
       setBio(existing?.bio ?? '');
-      setAvatarUri(existing?.avatar_url ?? null);
+      setAvatarUri(getAvatarPublicUrlFromPath(existing?.avatar_url ?? null));
       setIsLoading(false);
     };
 
@@ -191,7 +220,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     }
 
     if (avatarUri.startsWith('http://') || avatarUri.startsWith('https://')) {
-      return avatarUri;
+      return extractAvatarStoragePath(avatarUri) ?? avatarUri;
     }
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -256,8 +285,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
     }
 
-    const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
-    return data.publicUrl;
+    return filePath;
   };
 
   const handleSaveProfile = async () => {
@@ -338,8 +366,19 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.headerCard}>
-            <Text style={styles.title}>Set up your profile</Text>
-            <Text style={styles.subtitle}>Choose your identity before entering SideQuest.</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.title}>{mode === 'edit' ? 'Edit your profile' : 'Set up your profile'}</Text>
+              {mode === 'edit' && onCancel ? (
+                <Pressable onPress={onCancel} style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}>
+                  <Text style={styles.cancelButtonText}>Close</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <Text style={styles.subtitle}>
+              {mode === 'edit'
+                ? 'Update your profile details and save your changes.'
+                : 'Choose your identity before entering SideQuest.'}
+            </Text>
           </View>
 
           <View style={styles.formCard}>
@@ -392,10 +431,10 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
               {isSaving ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.saveButtonText}>Continue</Text>
-              )}
-            </Pressable>
-          </View>
+                  <Text style={styles.saveButtonText}>{mode === 'edit' ? 'Save Changes' : 'Continue'}</Text>
+                )}
+              </Pressable>
+            </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -423,11 +462,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#171B25',
     padding: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   title: {
     color: '#F6F8FE',
     fontSize: 24,
     fontWeight: '700',
     marginLeft: 4,
+    flex: 1,
   },
   subtitle: {
     color: '#AAB3C8',
@@ -515,6 +560,21 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: '#2A3040',
+    backgroundColor: '#101420',
+    borderRadius: 12,
+    height: 34,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#AAB4D4',
+    fontSize: 12,
     fontWeight: '700',
   },
   pressed: {
