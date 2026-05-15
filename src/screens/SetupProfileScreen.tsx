@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AVATAR_BUCKET_NAME, extractAvatarStoragePath, getAvatarPublicUrl } from '@/src/lib/supabase/avatar';
 import { supabase } from '@/src/lib/supabase/client';
 
 type SetupProfileScreenProps = {
@@ -24,8 +25,6 @@ type SetupProfileScreenProps = {
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._]+$/;
-const AVATAR_BUCKET_NAME = 'avatars';
-const AVATAR_PUBLIC_URL_MARKER = `/storage/v1/object/public/${AVATAR_BUCKET_NAME}/`;
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -52,32 +51,6 @@ function cleanLocalFileUri(uri: string): string {
   }
 
   return cleaned;
-}
-
-function extractAvatarStoragePath(pathOrUrl: string | null): string | null {
-  if (!pathOrUrl) {
-    return null;
-  }
-
-  const trimmed = pathOrUrl.trim();
-  const markerIndex = trimmed.indexOf(AVATAR_PUBLIC_URL_MARKER);
-
-  if (markerIndex === -1) {
-    return trimmed;
-  }
-
-  const rawPath = trimmed.slice(markerIndex + AVATAR_PUBLIC_URL_MARKER.length).split('?')[0];
-  return decodeURIComponent(rawPath);
-}
-
-function getAvatarPublicUrlFromPath(pathOrUrl: string | null): string | null {
-  const avatarPath = extractAvatarStoragePath(pathOrUrl);
-  if (!avatarPath) {
-    return null;
-  }
-
-  const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(avatarPath);
-  return data.publicUrl;
 }
 
 export default function SetupProfileScreen({ onComplete, mode = 'setup', onCancel }: SetupProfileScreenProps) {
@@ -140,7 +113,7 @@ export default function SetupProfileScreen({ onComplete, mode = 'setup', onCance
       const existing = profileData;
       setUsername(existing?.username ?? fallbackUsername);
       setBio(existing?.bio ?? '');
-      setAvatarUri(getAvatarPublicUrlFromPath(existing?.avatar_url ?? null));
+      setAvatarUri(getAvatarPublicUrl(existing?.avatar_url ?? null));
       setIsLoading(false);
     };
 
@@ -285,6 +258,7 @@ export default function SetupProfileScreen({ onComplete, mode = 'setup', onCance
       throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
     }
 
+    // Store storage path (not public URL) so views consistently resolve display URLs with getPublicUrl(path).
     return filePath;
   };
 

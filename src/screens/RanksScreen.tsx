@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAvatarPublicUrl } from '@/src/lib/supabase/avatar';
 import { supabase } from '@/src/lib/supabase/client';
 
 type LeaderboardEntry = {
@@ -37,40 +38,11 @@ type MonthlyRow = {
   monthly_position: number;
 };
 
-const AVATAR_BUCKET_NAME = 'avatars';
-const AVATAR_PUBLIC_URL_MARKER = `/storage/v1/object/public/${AVATAR_BUCKET_NAME}/`;
-
 const MEDAL_COLORS: Record<number, string> = {
   1: '#FFD700',
   2: '#C0C0C0',
   3: '#CD7F32',
 };
-
-function extractAvatarStoragePath(pathOrUrl: string | null): string | null {
-  if (!pathOrUrl) {
-    return null;
-  }
-
-  const trimmed = pathOrUrl.trim();
-  const markerIndex = trimmed.indexOf(AVATAR_PUBLIC_URL_MARKER);
-
-  if (markerIndex === -1) {
-    return trimmed;
-  }
-
-  const rawPath = trimmed.slice(markerIndex + AVATAR_PUBLIC_URL_MARKER.length).split('?')[0];
-  return decodeURIComponent(rawPath);
-}
-
-function getAvatarPublicUrl(pathOrUrl: string | null): string | null {
-  const avatarPath = extractAvatarStoragePath(pathOrUrl);
-  if (!avatarPath) {
-    return null;
-  }
-
-  const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(avatarPath);
-  return data.publicUrl;
-}
 
 function RankBadge({ position }: { position: number }) {
   if (position <= 3) {
