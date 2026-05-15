@@ -195,44 +195,51 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     }
 
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (sessionError || !accessToken) {
+    const session = sessionData.session;
+    if (sessionError || !session?.access_token) {
       throw new Error(sessionError?.message ?? 'Could not get an authenticated session.');
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase configuration is missing.');
     }
 
-    const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
-    const fileName = `avatar_${Date.now()}.jpg`;
-    const filePath = `${userId}/${fileName}`;
-    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
+    try {
+      const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
+      const fileName = `avatar_${Date.now()}.jpg`;
+      const filePath = `${userId}/${fileName}`;
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
 
-    const formData = new FormData();
-    const formDataFile: ReactNativeFormDataFile = {
-      uri: cleanedAvatarUri,
-      name: fileName,
-      type: 'image/jpeg',
-    };
-    // React Native accepts this object shape for file uploads in FormData.
-    formData.append('file', formDataFile as any);
+      const formData = new FormData();
+      const formDataFile: ReactNativeFormDataFile = {
+        uri: cleanedAvatarUri,
+        name: fileName,
+        type: 'image/jpeg',
+      };
+      // React Native accepts this object shape for file uploads in FormData.
+      formData.append('file', formDataFile as any);
 
-    const uploadResponse = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        apikey: SUPABASE_ANON_KEY,
-        'x-upsert': 'true',
-      },
-      body: formData,
-    });
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+          'x-upsert': 'true',
+        },
+        body: formData,
+      });
 
-    if (!uploadResponse.ok) {
-      throw new Error(`Avatar upload failed (status ${uploadResponse.status}). Please try again.`);
+      if (!uploadResponse.ok) {
+        const responseText = await uploadResponse.text();
+        throw new Error(responseText || `Avatar upload failed with status ${uploadResponse.status}`);
+      }
+
+      const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (error) {
+      const exactError = error instanceof Error ? error.message : String(error);
+      Alert.alert('Avatar upload failed', exactError);
+      throw error;
     }
-
-    const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
-    return data.publicUrl;
   };
 
   const handleSaveProfile = async () => {
@@ -269,11 +276,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       let uploadedAvatarUrl: string | null = null;
       try {
         uploadedAvatarUrl = await uploadAvatarIfNeeded();
-      } catch (err) {
-        Alert.alert(
-          'Avatar upload failed',
-          err instanceof Error ? err.message : 'Could not upload your avatar. Please try again.'
-        );
+      } catch {
         return;
       }
 
