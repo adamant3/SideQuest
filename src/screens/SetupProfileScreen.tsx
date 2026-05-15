@@ -203,58 +203,54 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       throw new Error('Supabase configuration is missing.');
     }
 
-    try {
-      const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
-      const fileName = `avatar_${Date.now()}.jpg`;
-      const filePath = `${userId}/${fileName}`;
-      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
+    const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
+    const fileName = `avatar_${Date.now()}.jpg`;
+    const filePath = `${userId}/${fileName}`;
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
 
-      const formData = new FormData();
-      const formDataFile: ReactNativeFormDataFile = {
-        uri: cleanedAvatarUri,
-        name: fileName,
-        type: 'image/jpeg',
-      };
-      // React Native accepts this object shape for file uploads in FormData.
-      formData.append('file', formDataFile as any);
+    const formData = new FormData();
+    const formDataFile: ReactNativeFormDataFile = {
+      uri: cleanedAvatarUri,
+      name: fileName,
+      type: 'image/jpeg',
+    };
+    // React Native accepts this object shape for file uploads in FormData.
+    formData.append('file', formDataFile as any);
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: SUPABASE_ANON_KEY,
-          'x-upsert': 'true',
-        },
-        body: formData,
-      });
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: SUPABASE_ANON_KEY,
+        'x-upsert': 'true',
+      },
+      body: formData,
+    });
 
-      if (!uploadResponse.ok) {
-        const responseText = await uploadResponse.text();
-        let exactError = responseText.trim();
+    if (!uploadResponse.ok) {
+      const responseText = await uploadResponse.text();
+      let exactError = responseText.trim();
 
-        if (responseText) {
-          try {
-            const parsed = JSON.parse(responseText) as
-              | { message?: string; error?: string; error_description?: string }
-              | null;
-            exactError =
-              parsed?.message?.trim() ||
-              parsed?.error_description?.trim() ||
-              parsed?.error?.trim() ||
-              exactError;
-          } catch {
-            // Keep raw response text when it is not JSON.
-          }
+      if (exactError) {
+        try {
+          const parsed = JSON.parse(responseText) as
+            | { message?: string; error?: string; error_description?: string }
+            | null;
+          exactError =
+            parsed?.message?.trim() ||
+            parsed?.error_description?.trim() ||
+            parsed?.error?.trim() ||
+            exactError;
+        } catch {
+          // Keep raw response text when it is not JSON.
         }
-
-        throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
       }
 
-      const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
-      return data.publicUrl;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : String(error));
+      throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
     }
+
+    const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   const handleSaveProfile = async () => {
