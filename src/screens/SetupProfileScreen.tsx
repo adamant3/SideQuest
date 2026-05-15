@@ -176,10 +176,6 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       return avatarUri;
     }
 
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase configuration is missing.');
-    }
-
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (sessionError || !accessToken) {
@@ -200,7 +196,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       name: `avatar.${extension}`,
       type: mimeType,
     };
-    formData.append('file', formDataFile as unknown as Blob);
+    formData.append('file', formDataFile as any);
 
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
@@ -213,7 +209,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     });
 
     if (!uploadResponse.ok) {
-      throw new Error('Avatar upload failed. Please try again.');
+      throw new Error(`Avatar upload failed (status ${uploadResponse.status}). Please try again.`);
     }
 
     const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
