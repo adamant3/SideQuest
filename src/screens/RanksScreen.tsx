@@ -1,8 +1,9 @@
-import { Medal, Trophy } from 'lucide-react-native';
+import { Medal, Trophy, User } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAvatarPublicUrl } from '@/src/lib/supabase/avatar';
 import { supabase } from '@/src/lib/supabase/client';
 
 type LeaderboardEntry = {
@@ -55,10 +57,12 @@ export default function RanksScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [failedAvatarUserIds, setFailedAvatarUserIds] = useState<Set<string>>(new Set());
 
   const loadLeaderboard = useCallback(async (tab: 'global' | 'monthly') => {
     setIsLoading(true);
     setError(null);
+    setFailedAvatarUserIds(new Set());
 
     const { data: userData } = await supabase.auth.getUser();
     setCurrentUserId(userData.user?.id ?? null);
@@ -165,15 +169,30 @@ export default function RanksScreen() {
             }
             renderItem={({ item }) => {
               const isCurrentUser = item.user_id === currentUserId;
+              const avatarUrl = getAvatarPublicUrl(item.avatar_url);
+              const showFallback = !avatarUrl || failedAvatarUserIds.has(item.user_id);
               return (
                 <View style={[styles.entryRow, isCurrentUser && styles.entryRowHighlight]}>
                   <View style={styles.badgeContainer}>
                     <RankBadge position={item.position} />
                   </View>
                   <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarInitial}>
-                      {item.username.charAt(0).toUpperCase()}
-                    </Text>
+                    {showFallback ? (
+                      <User color="#98A1B8" size={17} strokeWidth={2} />
+                    ) : (
+                      <Image
+                        source={{ uri: avatarUrl }}
+                        style={styles.avatarImage}
+                        resizeMode="cover"
+                        onError={() =>
+                          setFailedAvatarUserIds((prev) => {
+                            const next = new Set(prev);
+                            next.add(item.user_id);
+                            return next;
+                          })
+                        }
+                      />
+                    )}
                   </View>
                   <View style={styles.entryInfo}>
                     <Text style={[styles.entryUsername, isCurrentUser && styles.entryUsernameHighlight]}>
@@ -288,8 +307,15 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 19,
     backgroundColor: '#2A3040',
+    borderWidth: 1,
+    borderColor: '#3A4157',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarInitial: {
     color: '#AAB4D4',

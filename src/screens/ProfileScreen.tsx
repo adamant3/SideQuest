@@ -1,10 +1,11 @@
-import { Shield, Star, Trophy } from 'lucide-react-native';
+import { Pencil, Shield, Star, Trophy, User } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAvatarPublicUrl } from '@/src/lib/supabase/avatar';
 import { supabase } from '@/src/lib/supabase/client';
+import SetupProfileScreen from '@/src/screens/SetupProfileScreen';
 
 type Profile = {
   id: string;
@@ -42,7 +45,6 @@ const TROPHY_GAP_SIZE = 4;
 const TROPHY_CELL_SIZE = (SCREEN_WIDTH - TROPHY_GAP_SIZE * (TROPHY_NUM_COLUMNS - 1)) / TROPHY_NUM_COLUMNS;
 
 const XP_RANK_THRESHOLDS = { adventurer: 500, legend: 1500 } as const;
-
 function getRankName(xp: number): string {
   if (xp <= XP_RANK_THRESHOLDS.adventurer) return 'Novice';
   if (xp <= XP_RANK_THRESHOLDS.legend) return 'Adventurer';
@@ -116,6 +118,8 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -218,6 +222,10 @@ export default function ProfileScreen() {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [profile?.avatar_url]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -241,6 +249,7 @@ export default function ProfileScreen() {
 
   const rankName = getRankName(profile.total_xp);
   const rankColor = getRankColor(rankName);
+  const avatarUrl = getAvatarPublicUrl(profile.avatar_url);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -255,10 +264,26 @@ export default function ProfileScreen() {
         {/* Profile Header */}
         <View style={styles.profileCard}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{profile.username.charAt(0).toUpperCase()}</Text>
+            {avatarUrl && !avatarLoadFailed ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+                onError={() => setAvatarLoadFailed(true)}
+              />
+            ) : (
+              <User color="#98A1B8" size={26} strokeWidth={2} />
+            )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.username}>{profile.username}</Text>
+            <View style={styles.usernameRow}>
+              <Text style={styles.username}>{profile.username}</Text>
+              <Pressable
+                onPress={() => setIsEditProfileVisible(true)}
+                style={({ pressed }) => [styles.editIconButton, pressed && styles.editIconButtonPressed]}>
+                <Pencil color="#AAB4D4" size={14} strokeWidth={2.3} />
+              </Pressable>
+            </View>
             {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
           </View>
         </View>
@@ -315,6 +340,16 @@ export default function ProfileScreen() {
           <Text style={styles.signOutLabel}>{isSigningOut ? 'Signing out…' : 'Sign Out'}</Text>
         </Pressable>
       </ScrollView>
+      <Modal visible={isEditProfileVisible} animationType="slide" presentationStyle="fullScreen">
+        <SetupProfileScreen
+          mode="edit"
+          onCancel={() => setIsEditProfileVisible(false)}
+          onComplete={() => {
+            setIsEditProfileVisible(false);
+            loadProfile();
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -375,8 +410,15 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#2A3040',
+    borderWidth: 1,
+    borderColor: '#3A4157',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarInitial: {
     color: '#AAB4D4',
@@ -391,6 +433,24 @@ const styles = StyleSheet.create({
     color: '#F6F8FE',
     fontSize: 20,
     fontWeight: '700',
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editIconButton: {
+    height: 28,
+    width: 28,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A3040',
+    backgroundColor: '#101420',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editIconButtonPressed: {
+    opacity: 0.75,
   },
   bio: {
     color: '#AAB3C8',
