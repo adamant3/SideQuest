@@ -22,6 +22,16 @@ type SetupProfileScreenProps = {
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._]+$/;
+const AVATAR_BUCKET_NAME = 'avatars';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const SUPPORTED_AVATAR_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+
+type ReactNativeFormDataFile = {
+  uri: string;
+  name: string;
+  type: string;
+};
 
 export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -166,23 +176,55 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       return avatarUri;
     }
 
-    const avatarResponse = await fetch(avatarUri);
-    const avatarBlob = await avatarResponse.blob();
-    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, avatarBlob, { contentType: 'image/jpeg', upsert: true });
-
-    if (uploadError) {
-      throw new Error(uploadError.message);
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new Error(sessionError?.message ?? 'Could not get an authenticated session.');
+    }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase configuration is missing.');
     }
 
-    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const extensionMatch = avatarUri.match(/\.(\w+)(?:\?|#|$)/);
+    const parsedExtension = extensionMatch?.[1]?.toLowerCase();
+    const extension =
+      parsedExtension && SUPPORTED_AVATAR_EXTENSIONS.has(parsedExtension) ? parsedExtension : 'jpg';
+    const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
+
+    const formData = new FormData();
+    const formDataFile: ReactNativeFormDataFile = {
+      uri: avatarUri,
+      name: `avatar.${extension}`,
+      type: mimeType,
+    };
+    // React Native accepts this object shape for file uploads in FormData.
+    formData.append('file', formDataFile as any);
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+        'x-upsert': 'true',
+      },
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Avatar upload failed (status ${uploadResponse.status}). Please try again.`);
+    }
+
+    const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
     return data.publicUrl;
   };
 
   const handleSaveProfile = async () => {
+    if (isSaving) {
+      return;
+    }
+
     if (!userId) {
       Alert.alert('Sign in required', 'Please sign in again.');
       return;
@@ -338,6 +380,7 @@ const styles = StyleSheet.create({
     color: '#F6F8FE',
     fontSize: 24,
     fontWeight: '700',
+    marginLeft: 4,
   },
   subtitle: {
     color: '#AAB3C8',
