@@ -48,11 +48,24 @@ function cleanLocalFileUri(uri: string): string {
     return `file://${cleaned}`;
   }
 
-  if (Platform.OS === 'android') {
-    return `file://${cleaned}`;
-  }
-
   return cleaned;
+}
+
+function getMimeTypeFromUri(uri: string): string {
+  const extensionMatch = uri.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+  const extension = extensionMatch?.[1]?.toLowerCase();
+
+  switch (extension) {
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    default:
+      return 'image/jpeg';
+  }
 }
 
 export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
@@ -208,6 +221,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     }
 
     const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
+    const mimeType = getMimeTypeFromUri(cleanedAvatarUri);
     const fileName = `avatar_${Date.now()}.jpg`;
     const filePath = `${userId}/${fileName}`;
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
@@ -216,7 +230,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     const formDataFile: ReactNativeFormDataFile = {
       uri: cleanedAvatarUri,
       name: fileName,
-      type: 'image/jpeg',
+      type: mimeType,
     };
     // React Native accepts this object shape for file uploads in FormData.
     formData.append('file', formDataFile as any);
