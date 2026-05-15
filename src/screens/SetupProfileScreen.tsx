@@ -181,6 +181,9 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     if (sessionError || !accessToken) {
       throw new Error(sessionError?.message ?? 'Could not get an authenticated session.');
     }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase configuration is missing.');
+    }
 
     const extensionMatch = avatarUri.match(/\.(\w+)(?:\?|#|$)/);
     const parsedExtension = extensionMatch?.[1]?.toLowerCase();
@@ -196,6 +199,7 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       name: `avatar.${extension}`,
       type: mimeType,
     };
+    // React Native accepts this object shape for file uploads in FormData.
     formData.append('file', formDataFile as any);
 
     const uploadResponse = await fetch(uploadUrl, {
