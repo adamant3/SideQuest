@@ -230,15 +230,30 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
 
       if (!uploadResponse.ok) {
         const responseText = await uploadResponse.text();
-        throw new Error(responseText || `Avatar upload failed with status ${uploadResponse.status}`);
+        let exactError = responseText.trim();
+
+        if (responseText) {
+          try {
+            const parsed = JSON.parse(responseText) as
+              | { message?: string; error?: string; error_description?: string }
+              | null;
+            exactError =
+              parsed?.message?.trim() ||
+              parsed?.error_description?.trim() ||
+              parsed?.error?.trim() ||
+              exactError;
+          } catch {
+            // Keep raw response text when it is not JSON.
+          }
+        }
+
+        throw new Error(exactError || `Avatar upload failed with status ${uploadResponse.status}`);
       }
 
       const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
       return data.publicUrl;
     } catch (error) {
-      const exactError = error instanceof Error ? error.message : String(error);
-      Alert.alert('Avatar upload failed', exactError);
-      throw error;
+      throw new Error(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -276,7 +291,8 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       let uploadedAvatarUrl: string | null = null;
       try {
         uploadedAvatarUrl = await uploadAvatarIfNeeded();
-      } catch {
+      } catch (err) {
+        Alert.alert('Avatar upload failed', err instanceof Error ? err.message : String(err));
         return;
       }
 
