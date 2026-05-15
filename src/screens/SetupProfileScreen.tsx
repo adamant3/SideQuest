@@ -22,6 +22,9 @@ type SetupProfileScreenProps = {
 };
 
 const USERNAME_PATTERN = /^[a-z0-9._]+$/;
+const AVATAR_BUCKET_NAME = 'avatars';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -166,23 +169,53 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       return avatarUri;
     }
 
-    const avatarResponse = await fetch(avatarUri);
-    const avatarBlob = await avatarResponse.blob();
-    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, avatarBlob, { contentType: 'image/jpeg', upsert: true });
-
-    if (uploadError) {
-      throw new Error(uploadError.message);
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase configuration is missing.');
     }
 
-    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      throw new Error(sessionError?.message ?? 'Could not get an authenticated session.');
+    }
+
+    const extensionMatch = avatarUri.match(/\.(\w+)(?:\?|#|$)/);
+    const extension = extensionMatch?.[1]?.toLowerCase() ?? 'jpg';
+    const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: avatarUri,
+      name: `avatar.${extension}`,
+      type: mimeType,
+    } as any);
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: SUPABASE_ANON_KEY,
+        'x-upsert': 'true',
+      },
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      const uploadErrorText = await uploadResponse.text();
+      throw new Error(uploadErrorText || 'Avatar upload failed.');
+    }
+
+    const { data } = supabase.storage.from(AVATAR_BUCKET_NAME).getPublicUrl(filePath);
     return data.publicUrl;
   };
 
   const handleSaveProfile = async () => {
+    if (isSaving) {
+      return;
+    }
+
     if (!userId) {
       Alert.alert('Sign in required', 'Please sign in again.');
       return;
@@ -338,6 +371,7 @@ const styles = StyleSheet.create({
     color: '#F6F8FE',
     fontSize: 24,
     fontWeight: '700',
+    marginLeft: 4,
   },
   subtitle: {
     color: '#AAB3C8',

@@ -248,6 +248,10 @@ export default function ProfileScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>Profile</Text>
+        </View>
+
         {/* Profile Header */}
         <View style={styles.profileCard}>
           <View style={styles.avatarCircle}>
@@ -330,6 +334,15 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
     gap: 12,
   },
+  headerContent: {
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  title: {
+    color: '#F6F8FE',
+    fontSize: 24,
+    fontWeight: '700',
+  },
   stateContainer: {
     flex: 1,
     alignItems: 'center',
@@ -352,9 +365,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#171B25',
     borderWidth: 1,
     borderColor: '#2A3040',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     gap: 14,
+    marginHorizontal: 16,
   },
   avatarCircle: {
     width: 60,
@@ -387,8 +401,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#171B25',
     borderWidth: 1,
     borderColor: '#2A3040',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
+    marginHorizontal: 16,
   },
   rankRow: {
     flexDirection: 'row',
@@ -419,6 +434,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     marginTop: 4,
+    marginHorizontal: 16,
   },
   sectionTitle: {
     color: '#F6F8FE',
@@ -436,6 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 32,
     gap: 12,
+    marginHorizontal: 16,
   },
   emptyTrophyText: {
     color: '#8891AA',
@@ -470,6 +487,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
+    marginHorizontal: 16,
   },
   signOutButtonPressed: {
     opacity: 0.7,
