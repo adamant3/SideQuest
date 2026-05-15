@@ -25,13 +25,31 @@ const USERNAME_PATTERN = /^[a-z0-9._]+$/;
 const AVATAR_BUCKET_NAME = 'avatars';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const SUPPORTED_AVATAR_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 
 type ReactNativeFormDataFile = {
   uri: string;
   name: string;
   type: string;
 };
+
+function cleanLocalFileUri(uri: string): string {
+  const cleaned = uri.trim();
+
+  if (
+    cleaned.startsWith('file://') ||
+    cleaned.startsWith('content://') ||
+    cleaned.startsWith('http://') ||
+    cleaned.startsWith('https://')
+  ) {
+    return cleaned;
+  }
+
+  if (cleaned.startsWith('/')) {
+    return `file://${cleaned}`;
+  }
+
+  return cleaned;
+}
 
 export default function SetupProfileScreen({ onComplete }: SetupProfileScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
@@ -185,19 +203,16 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
       throw new Error('Supabase configuration is missing.');
     }
 
-    const extensionMatch = avatarUri.match(/\.(\w+)(?:\?|#|$)/);
-    const parsedExtension = extensionMatch?.[1]?.toLowerCase();
-    const extension =
-      parsedExtension && SUPPORTED_AVATAR_EXTENSIONS.has(parsedExtension) ? parsedExtension : 'jpg';
-    const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
-    const filePath = `${userId}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const cleanedAvatarUri = cleanLocalFileUri(avatarUri);
+    const fileName = `avatar_${Date.now()}.jpg`;
+    const filePath = `${userId}/${fileName}`;
     const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${AVATAR_BUCKET_NAME}/${filePath}`;
 
     const formData = new FormData();
     const formDataFile: ReactNativeFormDataFile = {
-      uri: avatarUri,
-      name: `avatar.${extension}`,
-      type: mimeType,
+      uri: cleanedAvatarUri,
+      name: fileName,
+      type: 'image/jpeg',
     };
     // React Native accepts this object shape for file uploads in FormData.
     formData.append('file', formDataFile as any);
@@ -251,7 +266,17 @@ export default function SetupProfileScreen({ onComplete }: SetupProfileScreenPro
     setIsSaving(true);
 
     try {
-      const uploadedAvatarUrl = await uploadAvatarIfNeeded();
+      let uploadedAvatarUrl: string | null = null;
+      try {
+        uploadedAvatarUrl = await uploadAvatarIfNeeded();
+      } catch (err) {
+        Alert.alert(
+          'Avatar upload failed',
+          err instanceof Error ? err.message : 'Could not upload your avatar. Please try again.'
+        );
+        return;
+      }
+
       const { error } = await supabase.from('profiles').upsert(
         {
           id: userId,
